@@ -1,0 +1,8 @@
+# Claude Code local/credential state
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
