@@ -1,50 +1,77 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# lot-scanner Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Honest Automation, Human Confirmation
+Every AI-identified item (title, platform, variant, condition, price) MUST pass through
+an explicit human review/confirm step before it is treated as accepted inventory or
+offered to a customer. The product MUST NOT be marketed or built as fully automated
+pricing — the pitch is "AI pre-fills, staff confirms," not "AI decides." No code path
+may auto-commit an AI guess without a confirm action tied to it.
+Rationale: the scanner is expected to be correct roughly 70-80% of the time, not 100%;
+overselling full automation breaks trust the first time a demo misidentifies an item.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Correction Speed Is the Product
+The review screen (itemized card list, select/deselect all, per-card confidence, quick
+correct/swap) MUST make confirming a correct guess and fixing a wrong one both fast.
+Any feature that slows bulk confirmation or makes correcting a miss nearly as slow as
+pricing it manually is a regression, not a tradeoff.
+Rationale: the entire value proposition versus manual pricing is time saved; if
+correction friction approaches manual-pricing time, the pitch collapses even at high
+underlying accuracy.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Shared Code First (React Native)
+The client is a single React Native codebase targeting iOS and Android. Business logic,
+API calls, and the review-screen UI MUST be written once in shared RN code. Native
+modules or platform-specific code are permitted only where RN has no viable path (e.g.,
+a camera capability RN libraries don't expose) and MUST be justified in the PR/spec that
+introduces them.
+Rationale: one wedge feature does not justify maintaining two native codebases; shared
+code keeps a solo/small team's velocity high.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Vertical Slices, One at a Time
+Work is planned and built as full vertical slices — one frontend item, one function-app
+item, and one database item per cycle — tracked as GitHub work items via
+`/speckit-taskstoissues`. A new slice MUST NOT start before the current slice's items are
+implemented and verified merged (not just marked done).
+Rationale: matches how Samuel wants this built given limited time, and avoids the
+previously observed failure mode (see RetroStoreManager's `project-strata-done-not-merged`
+memory) where "done" drifted from "merged."
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Azure-Native, Consistent with RetroStoreManager
+The backend is an Azure Function, and any database choice follows the same Azure-native,
+low-ops pattern already used by RetroStoreManager (`fn-mystore`, `db-gamedb`). New
+infrastructure categories (non-Azure clouds, new hosting paradigms) require an explicit
+justification in a spec before adoption.
+Rationale: reuses operational knowledge and existing Azure subscription/tooling instead
+of introducing a second ops surface for a one-person team to maintain.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Product Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- Target platforms: iOS and Android via React Native. No web client in scope for this
+  repo's specs (RSM's existing web app is a separate product).
+- This repo holds specs/plans only. Implementation lives in separate repos (frontend,
+  function app, database), created once a slice's plan is ready to implement — mirroring
+  RetroStoreManager's `web-mystore` / `fn-mystore` / `db-gamedb` split.
+- Database technology is not yet decided; the first slice that needs persistence MUST
+  decide and record it in that slice's plan, not here.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- Each vertical slice runs the full spec-kit chain: `/speckit-specify` → (optional
+  `/speckit-clarify`) → `/speckit-plan` → `/speckit-tasks` → (optional
+  `/speckit-analyze` / `/speckit-checklist`) → `/speckit-taskstoissues` →
+  `/speckit-implement`.
+- A slice's tasks are split so each GitHub work item maps to exactly one of: the RN
+  frontend change, the Azure Function change, or the database change — not a mix.
+- Before implementation on a slice begins, its spec and plan MUST be reviewed by Samuel.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes ad hoc practice for this repo. Amendments are made via
+`/speckit-constitution`, require a stated rationale, and follow semantic versioning:
+MAJOR for incompatible principle removals/redefinitions, MINOR for new or materially
+expanded principles/sections, PATCH for wording/clarification only. Every spec and plan
+produced in this repo should be checked against these principles before moving to tasks.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-10-01 | **Last Amended**: 2026-10-01
