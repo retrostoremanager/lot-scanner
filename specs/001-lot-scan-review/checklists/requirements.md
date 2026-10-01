@@ -13,8 +13,9 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — 3 open (FR-001/Q3, FR-012/Q2, FR-013/Q1)
-- [x] Requirements are testable and unambiguous (pending the 3 clarifications above)
+- [x] No [NEEDS CLARIFICATION] markers remain — resolved 2026-10-01 (single photo, quote-only
+  with own-DB persistence, title/platform pricing + manual override)
+- [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
@@ -31,6 +32,5 @@
 
 ## Notes
 
-- Three [NEEDS CLARIFICATION] markers remain (photo-capture model, inventory-write scope,
-  condition-based pricing). Resolve via `/speckit-clarify` or direct answers before
+- All clarifications resolved directly with Samuel 2026-10-01. Spec is ready for
   `/speckit-plan`.

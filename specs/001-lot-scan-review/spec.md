@@ -107,8 +107,9 @@ enter it manually, then confirm the rest of the lot.
 
 ### Functional Requirements
 
-- **FR-001**: System MUST let an employee capture [NEEDS CLARIFICATION: Q3 — one photo
-  per lot, or multiple photos per lot scan session?] of a physical game lot.
+- **FR-001**: System MUST let an employee capture exactly one photo per lot scan session
+  for v1. Multi-photo and video capture (for large lots that don't fit in one frame) are
+  explicitly out of scope for this slice (see Out of Scope).
 - **FR-002**: System MUST analyze captured photo(s) and return one detected item per
   physical game, each with a suggested title, platform, variant (when applicable), a
   suggested price, and a confidence level.
@@ -130,17 +131,35 @@ enter it manually, then confirm the rest of the lot.
   is backgrounded or closed before the employee confirms.
 - **FR-011**: System MUST record which employee performed the scan and confirm actions,
   and when.
-- **FR-012**: Confirming a lot [NEEDS CLARIFICATION: Q2 — does this write the accepted
-  items into RetroStoreManager's existing inventory/POS system, or does this slice stop
-  at producing a priced list/quote with no inventory write?].
-- **FR-013**: Pricing suggestions are based on [NEEDS CLARIFICATION: Q1 — title/platform
-  only, or do they also factor in physical condition (e.g., loose cart vs. complete-in-box
-  vs. damaged) captured during this flow?].
+- **FR-012**: Confirming a lot MUST produce a priced quote only; it MUST NOT write
+  accepted items into RetroStoreManager's existing inventory/POS system in this slice.
+  The confirmed (and in-progress) session and its items MUST be persisted in this
+  product's own database as a historical quote record — this is distinct from writing
+  to sellable inventory, and is what satisfies FR-010/FR-011. Whether/how a confirmed
+  quote later becomes trackable store inventory (with sold-status) is an explicit,
+  deferred integration decision (see Out of Scope) — not resolved by this persistence.
+- **FR-013**: Pricing suggestions MUST be based on title/platform/variant reference
+  pricing only for v1; the AI MUST NOT attempt to estimate physical condition.
+- **FR-014**: Users MUST be able to manually edit the suggested price (and item details)
+  on any card during review — including cards the AI identified correctly — so the
+  employee can account for condition or other adjustments by hand.
+
+### Out of Scope (this slice)
+
+- Multi-photo or video capture per lot (single photo only for v1 — candidate future
+  enhancement).
+- AI-estimated physical condition / condition-adjusted pricing (title/platform reference
+  pricing only for v1; employee can still hand-adjust price per FR-014).
+- Writing confirmed items into RetroStoreManager's sellable inventory/POS, and therefore
+  tracking whether a quoted item was later actually sold — deliberately deferred because
+  doing it before there's a real inventory-intake flow would create records that look
+  like stock but can't be tracked as sold/unsold.
 
 ### Key Entities
 
 - **Lot Scan Session**: One photographing event for one customer's lot. Has a status
-  (in review / confirmed / discarded), the employee who ran it, and timestamps.
+  (in review / confirmed / discarded), the employee who ran it, and timestamps. Persists
+  as a historical quote record in this product's own database — not as RSM inventory.
 - **Scanned Item**: One physical game detected within a session. Has the AI-suggested
   title/platform/variant/price/confidence, the final accepted title/platform/variant/
   price (once reviewed), and a state (pending / accepted / corrected / excluded /
@@ -167,7 +186,8 @@ enter it manually, then confirm the rest of the lot.
   installed.
 - A queryable game catalog (titles/platforms/variants/reference pricing) already exists
   and can be searched for corrections (RetroStoreManager's existing game catalog).
-- This spec covers the scan-and-review experience only; it does not cover what happens
-  to a confirmed lot afterward beyond what FR-012 resolves.
+- This spec covers the scan-and-review experience and persisting it as a quote record;
+  it does not cover inventory intake, trade-in payout, or POS integration (see Out of
+  Scope).
 - Network connectivity is available at the point of scanning (offline scanning is out of
   scope for this slice).
