@@ -16,16 +16,19 @@ no corresponding benefit yet.
 
 ## 2. Azure Function language/runtime
 
-**Decision**: C# / .NET 8, isolated worker model — same as `fn-mystore` and
-`api-gamedb`.
+**Decision**: C# / .NET 10, isolated worker model. Samuel chose .NET 10 over matching
+`fn-mystore`/`api-gamedb`'s current .NET 8, deliberately starting this new product on
+the newer runtime rather than carrying the older LTS forward.
 
-**Rationale**: Matches existing RSM backend conventions, CI/CD patterns, and test
-stack (xUnit/Moq/FluentAssertions), so there's one set of operational knowledge across
-all Azure Functions in the org instead of two.
+**Rationale**: Same Azure Functions isolated-worker model and test stack
+(xUnit/Moq/FluentAssertions) as the rest of RSM, so operational knowledge still
+transfers — only the .NET version differs. Starting fresh repos on the newer runtime
+avoids inheriting a version upgrade as unplanned future work.
 
-**Alternatives considered**: Node.js/TypeScript Azure Functions, which would share a
-language with the RN client — rejected because it would be the only non-.NET Function
-app in the org, duplicating tooling/CI knowledge for marginal benefit.
+**Alternatives considered**: .NET 8 (match `fn-mystore`/`api-gamedb` exactly) — would
+keep all Azure Functions on one identical runtime, but was explicitly not what Samuel
+wanted for this new repo. Node.js/TypeScript Azure Functions (shares a language with the
+RN client) — rejected, would be the only non-.NET Function app in the org.
 
 ## 3. AI item identification approach
 
@@ -60,21 +63,19 @@ to `db-gamedb`'s schema changes more tightly than necessary.
 
 ## 5. Quote-record database sizing
 
-**Decision (for this plan)**: A new, dedicated Postgres Flexible Server (burstable tier)
-hosting a `lotscanner` database, separate from `db-gamedb`'s server.
+**Decision**: A new `lotscanner` database on `db-gamedb`'s existing Azure Postgres
+Flexible Server — no new server.
 
-**Rationale**: `lot-scanner` is explicitly being evaluated as a standalone-marketable
-feature; keeping its data store on its own server avoids coupling its scaling/maintenance
-lifecycle to `db-gamedb`'s, which matters more here than in a feature that will always
-ship bundled with the rest of RSM.
+**Rationale**: Avoids a new recurring Azure line item (roughly $15-25/mo per the
+pattern seen on `strata-reports` prod) for a single-database workload; a separate
+database still gives `lot-scanner` its own schema/migrations, independent of
+`db-gamedb`'s tables, which is enough isolation for this slice.
 
-**Alternatives considered**: A second database on `db-gamedb`'s existing Flexible Server
-— cheaper (one fewer Azure resource bill) and still isolates data via a separate
-database, but was rejected for now to keep this product's infra story clean in case it's
-spun off. **Flag for Samuel**: this is a real monthly-cost tradeoff (a new Flexible
-Server vs. a second DB on an existing one, roughly the difference between ~$0 incremental
-and a new ~$15-25/mo line item per the pattern seen on `strata-reports` prod) — worth a
-quick gut check before `db-lot-scanner` is actually provisioned, not before the plan.
+**Alternatives considered**: A dedicated new Flexible Server, which would fully decouple
+`lot-scanner`'s infra lifecycle from `db-gamedb`'s in case this product is ever spun off
+— rejected by Samuel as premature cost for a feature still being validated. Revisit if
+`db-gamedb`'s server becomes a scaling bottleneck shared across products, or if
+`lot-scanner` is actually spun out as its own product.
 
 ## 6. Confidence threshold for "low confidence" flagging
 

@@ -12,20 +12,22 @@ existing RetroStoreManager game catalog (`api-gamedb`), and returns one item per
 game with a suggested title/platform/variant/price/confidence. The app shows an itemized
 card review screen (select/deselect-all, per-card correct/exclude/price-override); on
 confirm, the session and its items are persisted as a quote record in a new
-PostgreSQL database — no write to RSM's sellable inventory in this slice.
+PostgreSQL database on `db-gamedb`'s existing server — no write to RSM's sellable
+inventory in this slice.
 
 ## Technical Context
 
-**Language/Version**: TypeScript (React Native / Expo) for the client; C# / .NET 8
-(isolated worker) for the Azure Function, matching `fn-mystore`/`api-gamedb`.
+**Language/Version**: TypeScript (React Native / Expo) for the client; C# / .NET 10
+(isolated worker) for the Azure Function — newer than `fn-mystore`/`api-gamedb`'s
+current .NET 8, a deliberate choice for this new product (see research.md).
 
 **Primary Dependencies**: Expo (managed RN workflow) + `expo-camera` for capture;
-Azure Functions .NET 8 isolated worker; Anthropic Claude (vision) for item detection/ID;
+Azure Functions .NET 10 isolated worker; Anthropic Claude (vision) for item detection/ID;
 HTTP client to the existing `api-gamedb` service for catalog lookup/fuzzy match;
-Npgsql/EF Core 8 for Postgres access (matching `api-gamedb`'s stack).
+Npgsql/EF Core 10 for Postgres access.
 
-**Storage**: PostgreSQL (Azure Flexible Server) — new `lotscanner` database, dedicated
-server (see research.md for the shared-vs-dedicated-server tradeoff).
+**Storage**: PostgreSQL — a new `lotscanner` database on `db-gamedb`'s existing Azure
+Flexible Server (no new server; see research.md for the tradeoff this accepts).
 
 **Testing**: Jest + React Native Testing Library (client); xUnit + Moq + FluentAssertions
 (function app), matching `fn-mystore` conventions.
@@ -57,7 +59,7 @@ traffic, not multi-tenant SaaS scale yet).
 | II. Correction Speed Is the Product | Select-all/deselect-all and per-item toggle are client-local state changes, not one network round-trip per card; corrections are a single `PATCH` per item, not a full re-scan. | PASS |
 | III. Shared Code First (React Native) | Single Expo/RN codebase for iOS + Android; no native modules planned (camera covered by `expo-camera`). | PASS |
 | IV. Vertical Slices, One at a Time | This plan produces exactly one frontend item (RN scan+review app), one function-app item (AI-identify + quote API), one database item (Postgres quote-record schema). | PASS |
-| V. Azure-Native, Consistent with RetroStoreManager | Backend is an Azure Function (.NET 8); storage is Azure Postgres Flexible Server; catalog reused via `api-gamedb`, not reimplemented. | PASS |
+| V. Azure-Native, Consistent with RetroStoreManager | Backend is an Azure Function (.NET 10 — newer runtime, same Azure-native pattern); storage is a database on `db-gamedb`'s existing Azure Postgres Flexible Server; catalog reused via `api-gamedb`, not reimplemented. | PASS |
 
 No violations — Complexity Tracking table omitted.
 
@@ -92,7 +94,7 @@ app-lot-scanner/            # React Native (Expo) client — THE frontend work i
 │   └── state/              # scan-session local/offline-tolerant state
 └── __tests__/
 
-fn-lot-scanner/              # Azure Function (.NET 8 isolated) — THE function-app work item
+fn-lot-scanner/              # Azure Function (.NET 10 isolated) — THE function-app work item
 ├── src/
 │   ├── Functions/          # HTTP triggers: create-scan, get-scan, patch-item, confirm
 │   ├── Services/           # AI-identify orchestration, api-gamedb client, pricing
@@ -100,7 +102,9 @@ fn-lot-scanner/              # Azure Function (.NET 8 isolated) — THE function
 │   └── Repos/              # Postgres access (EF Core)
 └── tests/
 
-db-lot-scanner/               # Postgres schema/migrations — THE database work item
+db-lot-scanner/               # Postgres schema/migrations for the new `lotscanner`
+│                              # database on db-gamedb's existing server — THE database
+│                              # work item
 ├── migrations/
 └── schema/                   # LotScanSession, ScannedItem DDL
 ```
