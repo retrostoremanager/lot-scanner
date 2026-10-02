@@ -10,9 +10,10 @@ in a review screen instead of pricing everything by hand.
 - **Client**: React Native app (iOS + Android, shared codebase) — camera capture →
   AI-assisted item identification → itemized card review screen (select/deselect all,
   per-card confidence, quick correct) → confirm.
-- **Backend**: Azure Function (AI scan/identify + pricing lookup).
-- **Data**: a database for scan sessions / identified items / pricing, shape TBD during
-  planning.
+- **Backend**: Azure Function (.NET 10, isolated worker) — AI scan/identify + pricing
+  lookup via `api-gamedb`'s catalog.
+- **Data**: PostgreSQL — a new `lotscanner` database on `db-gamedb`'s existing Azure
+  Flexible Server (decided in `specs/001-lot-scan-review/plan.md`).
 
 This repo holds the spec-kit specs and plans. Implementation will live in separate repos
 (one for the RN frontend, one for the function app, one for the database), following the

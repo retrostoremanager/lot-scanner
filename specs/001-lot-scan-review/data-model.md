@@ -7,16 +7,20 @@ One photographing event for one customer's lot.
 | Field | Type | Notes |
 |---|---|---|
 | `id` | uuid (PK) | |
-| `employee_id` | text | Who ran the scan (FR-011) |
-| `status` | enum: `in_review` \| `confirmed` \| `discarded` | |
+| `employee_id` | text | Who ran the scan (FR-011); populated from the authenticated request identity (plan.md Technical Context) |
+| `status` | enum: `processing` \| `in_review` \| `confirmed` \| `discarded` \| `failed` | |
 | `photo_url` | text | Blob storage reference to the captured photo |
+| `error_message` | text, nullable | Set only when `status = failed` |
 | `created_at` | timestamptz | |
 | `confirmed_at` | timestamptz, nullable | Set only on confirm |
 
-**State transitions**: `in_review` → `confirmed` (via confirm action, FR-009) or
-`in_review` → `discarded` (employee abandons the session). No transition out of
-`confirmed`/`discarded` (immutable once finalized, supporting Principle I — honest,
-one-way confirmation).
+**State transitions**: `processing` (AI call in flight) → `in_review` (items landed) or
+`failed` (AI call errored/timed out, contracts/lot-scan-api.md `GET` response). From
+`in_review`: → `confirmed` (via confirm action, FR-009) or → `discarded` (employee
+abandons the session, FR-015, `POST /lot-scans/{id}/discard`). No transition out of
+`confirmed`/`discarded`/`failed` (immutable once finalized, supporting Principle I —
+honest, one-way confirmation); a `failed` scan is retried via a new session, not by
+reviving this one.
 
 ## ScannedItem
 
@@ -29,7 +33,7 @@ One physical game detected within a session.
 | `suggested_catalog_game_id` | text, nullable | `api-gamedb` catalog ID the AI proposed; null if unidentified |
 | `suggested_title` / `suggested_platform` / `suggested_variant` | text, nullable | AI's raw guess, kept even after correction for later accuracy analysis (SC-002) |
 | `suggested_price` | numeric, nullable | Catalog reference price for the suggested match |
-| `confidence` | numeric (0-1), nullable | Blended vision + fuzzy-match score (research.md #3) |
+| `confidence` | numeric (0-1), nullable | Primarily the catalog fuzzy-match score, with the vision model's self-reported certainty as a secondary signal where available — see research.md #3/#6 on why this isn't a single calibrated number |
 | `final_catalog_game_id` | text, nullable | Set once accepted or corrected |
 | `final_title` / `final_platform` / `final_variant` | text, nullable | |
 | `final_price` | numeric, nullable | May be manually overridden per FR-014 |

@@ -102,6 +102,9 @@ enter it manually, then confirm the rest of the lot.
 - A photo is too blurry or poorly lit for any item in it to be identified: those items
   follow the same "unidentified" path as User Story 3, not a hard failure of the whole
   scan.
+- The AI identification call itself errors out or times out (not a per-item miss, but a
+  failure of the whole scan attempt): the employee MUST see that the scan failed (not an
+  endless "processing" state) and be able to try again with a new photo.
 
 ## Requirements *(mandatory)*
 
@@ -143,6 +146,9 @@ enter it manually, then confirm the rest of the lot.
 - **FR-014**: Users MUST be able to manually edit the suggested price (and item details)
   on any card during review — including cards the AI identified correctly — so the
   employee can account for condition or other adjustments by hand.
+- **FR-015**: Users MUST be able to discard an in-review session without confirming it
+  (e.g., the customer walks away mid-review). A discarded session MUST NOT contribute
+  any items to a quote.
 
 ### Out of Scope (this slice)
 

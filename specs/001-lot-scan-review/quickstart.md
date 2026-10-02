@@ -47,3 +47,16 @@ test `lotscanner` Postgres DB and a test `api-gamedb` instance/catalog fixture),
    confirming.
 2. Re-open and `GET /lot-scans/{id}` → verify the same in-review items are still there,
    none regenerated or lost.
+
+## 6. Discard a session (FR-015)
+
+1. Start a scan, let items populate, `POST /lot-scans/{id}/discard`.
+2. `GET /lot-scans/{id}` → verify `status: "discarded"`.
+3. Verify no items from this session appear in any later confirmed quote.
+
+## 7. AI call failure (new Edge Case)
+
+1. Trigger `POST /lot-scans` against a fixture/mock that forces the AI vision call to
+   error or time out.
+2. `GET /lot-scans/{id}` → verify `status: "failed"` with a non-null `errorMessage`
+   (not an indefinitely "processing" session).

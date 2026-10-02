@@ -2,7 +2,30 @@
 
 HTTP API exposed by the Azure Function to the React Native client. All endpoints require
 the employee's auth token (reuses RSM's existing auth, mechanism TBD at implementation —
-not re-decided here).
+not re-decided here; the resulting identity is what populates `employeeId`, FR-011).
+
+Every item in every response below includes both the AI's original suggestion and the
+current final values (null until accepted/corrected), so the client can always render
+"what the AI said" vs. "what's actually going to be quoted":
+
+```json
+{
+  "itemId": "uuid",
+  "state": "pending|accepted|corrected|excluded|unidentified",
+  "suggestedTitle": "string|null",
+  "suggestedPlatform": "string|null",
+  "suggestedVariant": "string|null",
+  "suggestedPrice": 0.00,
+  "confidence": 0.0,
+  "finalCatalogGameId": "string|null",
+  "finalTitle": "string|null",
+  "finalPlatform": "string|null",
+  "finalVariant": "string|null",
+  "finalPrice": 0.00,
+  "manuallyEntered": false
+}
+```
+This is the "item shape" referenced by every endpoint below.
 
 ## `POST /lot-scans`
 
@@ -16,7 +39,7 @@ Create a session and kick off AI identification for one photo.
 ```
 
 Identification runs asynchronously (research.md #3 target: ~10s); client polls
-`GET /lot-scans/{id}` until items are populated.
+`GET /lot-scans/{id}` until `status` leaves `processing` (see status values below).
 
 ## `GET /lot-scans/{id}`
 
@@ -27,37 +50,43 @@ app background/close per FR-010).
 ```json
 {
   "sessionId": "uuid",
-  "status": "in_review",
-  "items": [
-    {
-      "itemId": "uuid",
-      "state": "pending",
-      "suggestedTitle": "string",
-      "suggestedPlatform": "string",
-      "suggestedVariant": "string|null",
-      "suggestedPrice": 0.00,
-      "confidence": 0.0
-    }
-  ]
+  "status": "processing|in_review|confirmed|discarded|failed",
+  "errorMessage": "string|null",
+  "items": [ /* item shape, see above — empty while status is "processing" */ ]
 }
 ```
 
+`status: "failed"` (with `errorMessage` set) is returned if the AI identification call
+errors out or times out, so the client can distinguish "still working" from "broken"
+instead of polling forever. A failed session can be retried by issuing a new
+`POST /lot-scans` with the same photo; this endpoint does not auto-retry.
+
 ## `PATCH /lot-scans/{id}/items/{itemId}`
 
-Apply one review action to one item — accept, correct, exclude, manually enter, or
-price-override (FR-005, FR-006, FR-008, FR-014). Independent of other items' state
-(Principle II — no bulk round-trip required for a single correction).
+Apply one review action to one item — accept, correct, exclude, or manually enter
+(FR-005, FR-006, FR-008), and/or override the price (FR-014). Independent of other
+items' state (Principle II — no bulk round-trip required for a single correction).
 
 **Request** (any subset relevant to the action):
 ```json
 {
   "state": "accepted|corrected|excluded|unidentified",
   "finalCatalogGameId": "string|null",
+  "finalTitle": "string|null",
+  "finalPlatform": "string|null",
+  "finalVariant": "string|null",
   "finalPrice": 0.00
 }
 ```
+`finalCatalogGameId` is set when the employee picks an existing catalog entry (search
+result or AI suggestion) — in that case `finalTitle`/`finalPlatform`/`finalVariant` are
+filled in by the server from the catalog, not the client. `finalTitle`/`finalPlatform`/
+`finalVariant` are set directly by the client (with `finalCatalogGameId` left null) only
+for the no-catalog-match, manual-entry path (FR-008); the server sets
+`manuallyEntered: true` whenever a `PATCH` sets final fields without a
+`finalCatalogGameId`.
 
-**Response** `200 OK`: the updated item (same shape as in `GET`).
+**Response** `200 OK`: the updated item (item shape, see above).
 
 ## `PATCH /lot-scans/{id}/items:bulk`
 
@@ -68,7 +97,13 @@ Select-all / deselect-all (FR-004) in one round trip rather than N `PATCH` calls
 { "state": "accepted|pending", "itemIds": ["uuid", "..."] }
 ```
 
-**Response** `200 OK`: the full updated item list.
+**Scoping rule**: this endpoint only ever affects items whose *current* state is
+`pending` or `accepted` — any `corrected`, `excluded`, or `unidentified` item passed in
+`itemIds` is left untouched and returned as-is. This guarantees select-all/deselect-all
+can never silently revert a correction or re-include an excluded item (spec Acceptance
+Scenario 2.2).
+
+**Response** `200 OK`: the full updated item list (item shape, see above).
 
 ## `POST /lot-scans/{id}/confirm`
 
@@ -77,8 +112,20 @@ or `unidentified` with no final values — nothing is silently included or exclu
 
 **Response** `200 OK`:
 ```json
-{ "sessionId": "uuid", "status": "confirmed", "confirmedAt": "ISO-8601", "items": [ ] }
+{
+  "sessionId": "uuid",
+  "status": "confirmed",
+  "confirmedAt": "ISO-8601",
+  "items": [ /* item shape, see above — final accepted/corrected items only */ ]
+}
 ```
+
+## `POST /lot-scans/{id}/discard`
+
+Abandon an in-review session without confirming it (FR-015). No-op if the session is
+already `confirmed` or `discarded` (idempotent).
+
+**Response** `200 OK`: `{ "sessionId": "uuid", "status": "discarded" }`
 
 ## Catalog search (proxied — for manual correction, FR-006)
 

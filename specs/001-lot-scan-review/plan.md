@@ -43,7 +43,10 @@ for review/correction.
 
 **Constraints**: Online-only (no offline scanning, per spec Assumptions). Must reuse the
 existing game catalog via `api-gamedb`'s HTTP API rather than a direct DB connection
-(preserves RSM's existing service boundary).
+(preserves RSM's existing service boundary). Employee identity (FR-011's `employee_id`)
+comes from the authenticated request — the specific auth transport is deferred to
+implementation (contracts/lot-scan-api.md), but `fn-lot-scanner` must resolve a real
+employee identity from it, not a client-supplied value.
 
 **Scale/Scope**: Single-employee-at-a-time usage per store; typical lot 10-20 items,
 design should not break at 50; low overall request volume for v1 (one store's foot

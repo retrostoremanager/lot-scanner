@@ -35,12 +35,20 @@ RN client) — rejected, would be the only non-.NET Function app in the org.
 **Decision**: Send the lot photo to Claude's vision capability to detect/segment
 candidate items and propose a title/platform guess per item; resolve each candidate
 against the existing game catalog (via `api-gamedb`) with fuzzy matching to attach a
-canonical title/platform/variant and reference price. Confidence = a blend of the
-vision model's own certainty and the catalog fuzzy-match score.
+canonical title/platform/variant and reference price. Confidence is primarily the
+catalog fuzzy-match score (a well-understood, deterministic signal), with the vision
+model's own self-reported certainty folded in only as a secondary signal where
+available.
 
 **Rationale**: No training pipeline or labeled dataset needed to ship v1; other RSM/
 Samuel projects already use Claude for similar "identify + structure" tasks (portfolio
 AI assistant, StayRecap report pipeline), so this reuses proven integration patterns.
+Note: Claude's vision API does not emit a calibrated numeric confidence score, and
+self-reported LLM confidence is known to be poorly calibrated — leaning on fuzzy-match
+score as the primary signal avoids depending on a capability that may not hold up. A
+short technical spike (run real lot photos through the vision call, see what signal is
+actually usable) is worth doing early in `/speckit-tasks` for this function-app item,
+before committing to the exact confidence formula.
 
 **Alternatives considered**: A custom-trained object detection/classification model —
 rejected for v1: far higher upfront cost (data collection, training, hosting) for a
